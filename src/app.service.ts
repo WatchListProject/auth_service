@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { LoginRequest, RegisterRequest, ValidateRequest } from './auth_service.pb';
 import * as jwt from 'jsonwebtoken';
+import { User, UserDocument } from './mongoose/user.schema';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
 
 interface user {
   email: string;
@@ -13,8 +16,19 @@ export class AppService {
   private users: user[] = [{ email: 'abc', password: '123' }];
   private readonly jwtSecret = 'your-secret-key2';
 
-  register(request: RegisterRequest) {
-    throw new Error('Method not implemented.');
+  constructor(
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+  ) { }
+
+
+  async register(request: RegisterRequest) {
+    if (request.password == request.repeatedPassword) {
+      const createUser = new this.userModel({ email: request.email, password: request.password });
+      await createUser.save();
+      return { success: true };
+
+    }
+    return { success: false };
   }
 
   login(request: LoginRequest) {

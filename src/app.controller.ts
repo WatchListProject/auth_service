@@ -10,8 +10,7 @@ export class AppController implements AuthServiceController {
 
   @GrpcMethod('AuthService', 'Register')
   register(request: RegisterRequest): Promise<RegisterResponse> | Observable<RegisterResponse> | RegisterResponse {
-    this.appService.register(request);
-    throw new Error('Method not implemented.');
+    return this.appService.register(request);
   }
 
   @GrpcMethod('AuthService', 'Login')
