@@ -30,9 +30,7 @@ export class AppService {
     }
 
     const existingUser = await this.userModel.findOne({ email: request.email });
-    if (existingUser) {
-      throw new RpcException({ code: status.ALREADY_EXISTS, message: 'User already registered' });
-    }
+    
 
     const createUser = new this.userModel({ email: request.email, password: request.password });
     try {
