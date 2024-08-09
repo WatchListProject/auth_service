@@ -15,11 +15,13 @@ export class AppController implements AuthServiceController {
 
   @GrpcMethod('AuthService', 'Login')
   login(request: LoginRequest): Promise<LoginResponse> | Observable<LoginResponse> | LoginResponse {
+    console.log('Login for ' + request.email)
     return this.appService.login(request);
   }
 
   @GrpcMethod('AuthService', 'Validate')
   validate(request: ValidateRequest): Promise<ValidateResponse> | Observable<ValidateResponse> | ValidateResponse {
+    console.log('Validation for token:\n'+request.token);
     return this.appService.validate(request);
   }
 

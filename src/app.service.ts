@@ -1,54 +1,77 @@
 import { Injectable } from '@nestjs/common';
-import { LoginRequest, RegisterRequest, ValidateRequest } from './auth_service.pb';
+import { RpcException } from '@nestjs/microservices';
+import { status } from '@grpc/grpc-js';
+import { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, ValidateRequest, ValidateResponse } from './auth_service.pb';
 import * as jwt from 'jsonwebtoken';
 import { User, UserDocument } from './mongoose/user.schema';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-
-interface user {
-  email: string;
-  password: string;
-};
+import { Model } from 'mongoose';
 
 @Injectable()
 export class AppService {
-
-  private users: user[] = [{ email: 'abc', password: '123' }];
-  private readonly jwtSecret = 'your-secret-key2';
+  private readonly jwtSecret = process.env.JWT_SECRET_KEY;
 
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) { }
 
+  private validateEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
 
-  async register(request: RegisterRequest) {
-    if (request.password == request.repeatedPassword) {
-      const createUser = new this.userModel({ email: request.email, password: request.password });
+  async register(request: RegisterRequest): Promise<RegisterResponse> {
+    if (request.password !== request.repeatedPassword) {
+      throw new RpcException({ code: status.INVALID_ARGUMENT, message: 'Passwords do not match' });
+    }
+
+    if (!this.validateEmail(request.email)) {
+      throw new RpcException({ code: status.INVALID_ARGUMENT, message: 'Invalid email format' });
+    }
+
+    const existingUser = await this.userModel.findOne({ email: request.email });
+    if (existingUser) {
+      throw new RpcException({ code: status.ALREADY_EXISTS, message: 'User already registered' });
+    }
+
+    const createUser = new this.userModel({ email: request.email, password: request.password });
+    try {
       await createUser.save();
       return { success: true };
-
+    } catch (error) {
+      throw new RpcException({ code: status.INTERNAL, message: 'Error creating user: ' + error.message });
     }
-    return { success: false };
   }
 
-  login(request: LoginRequest) {
-    const user = this.users.find(u => u.email === request.email && u.password === request.password);
+  async login(request: LoginRequest): Promise<LoginResponse> {
+    const user = await this.userModel.findOne({ email: request.email });
+
+    if(!this.validateEmail(user.email)){
+      throw new RpcException({ code: status.INVALID_ARGUMENT, message: 'Invalid email format' });
+    }
+
     if (!user) {
-      return { success: false, message: 'Invalid email or password' };
+      throw new RpcException({ code: status.NOT_FOUND, message: 'User not found' });
     }
 
-    const token = jwt.sign({ email: user.email, aud: "Watchlist" }, this.jwtSecret, { expiresIn: '1h' });
-    return { success: true, token };
-  }
-  validate(request: ValidateRequest): import('./auth_service.pb').ValidateResponse | Promise<import('./auth_service.pb').ValidateResponse> | import('rxjs').Observable<import('./auth_service.pb').ValidateResponse> {
-    if (request.token === undefined || request.token === '') {
-      return { valid: false, message: 'Token is required' };
+    if (user.password !== request.password) {
+      throw new RpcException({ code: status.INVALID_ARGUMENT, message: 'Password does not match' });
     }
+
+    const userToken = jwt.sign({ email: user.email, aud: 'Watchlist' }, this.jwtSecret, { expiresIn: '1h' });
+    return { success: true, token: userToken };
+  }
+
+  validate(request: ValidateRequest): ValidateResponse {
+    if (!request.token) {
+      throw new RpcException({ code: status.INVALID_ARGUMENT, message: 'Token not found' });
+    }
+
     try {
       jwt.verify(request.token, this.jwtSecret);
       return { valid: true };
     } catch (error) {
-      return { valid: false, message: 'Invalid token' };
+      throw new RpcException({ code: status.UNAUTHENTICATED, message: 'Error during token validation: ' + error.message });
     }
   }
 
