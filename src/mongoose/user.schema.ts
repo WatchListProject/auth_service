@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
-export type UserDocument = User & Document;
+export type UserDocument = HydratedDocument<User>;
 
 @Schema()
 export class User {
@@ -13,6 +13,24 @@ export class User {
 
   @Prop({ required: true })
   password: string;
+
+  @Prop({ default: [] })
+  mediaList: [Media];
+
+}
+
+export class Media {
+  @Prop({ required: true })
+  mediaId: string; // The ID of the media in the corresponding media API
+
+  @Prop({ 
+    required: true,
+    enum: ['MOVIE', 'SERIE']
+  })
+  mediaType: string;// The type of the media in the corresponding media API ej: mediaType=Movie
+
+  @Prop({ required: true })
+  seen: boolean;
 
 }
 

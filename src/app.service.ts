@@ -30,7 +30,7 @@ export class AppService {
     }
 
     const existingUser = await this.userModel.findOne({ email: request.email });
-    
+
 
     const createUser = new this.userModel({ email: request.email, password: request.password });
     try {
@@ -44,7 +44,7 @@ export class AppService {
   async login(request: LoginRequest): Promise<LoginResponse> {
     const user = await this.userModel.findOne({ email: request.email });
 
-    if(!this.validateEmail(user.email)){
+    if (!this.validateEmail(user.email)) {
       throw new RpcException({ code: status.INVALID_ARGUMENT, message: 'Invalid email format' });
     }
 
@@ -56,7 +56,7 @@ export class AppService {
       throw new RpcException({ code: status.INVALID_ARGUMENT, message: 'Password does not match' });
     }
 
-    const userToken = jwt.sign({ email: user.email, aud: 'Watchlist' }, this.jwtSecret, { expiresIn: '1h' });
+    const userToken = jwt.sign({ email: user.email, userId: user._id.toString(), aud: 'Watchlist' }, this.jwtSecret, { expiresIn: '1h' });
     return { success: true, token: userToken };
   }
 
