@@ -29,36 +29,43 @@ export class AppService {
       throw new RpcException({ code: status.INVALID_ARGUMENT, message: 'Invalid email format' });
     }
 
-    const existingUser = await this.userModel.findOne({ email: request.email });
-
-
-    const createUser = new this.userModel({ email: request.email, password: request.password });
     try {
+      const createUser = new this.userModel({ email: request.email, password: request.password });
       await createUser.save();
       return { success: true };
     } catch (error) {
-      throw new RpcException({ code: status.INTERNAL, message: 'Error creating user: ' + error.message });
+      throw new RpcException({ code: status.INTERNAL, message: error.message });
     }
   }
 
   async login(request: LoginRequest): Promise<LoginResponse> {
-    const user = await this.userModel.findOne({ email: request.email });
+    try {
+      if (!this.validateEmail(request.email)) {
+        throw new RpcException({ code: status.INVALID_ARGUMENT, message: 'Invalid email format' });
+      }
 
-    if (!this.validateEmail(user.email)) {
-      throw new RpcException({ code: status.INVALID_ARGUMENT, message: 'Invalid email format' });
+      const user = await this.userModel.findOne({ email: request.email });
+
+      if (!user) {
+        throw new RpcException({ code: status.NOT_FOUND, message: 'User not found' });
+      }
+
+      if (user.password !== request.password) {
+        throw new RpcException({ code: status.UNAUTHENTICATED, message: 'Password does not match' });
+      }
+
+      const userToken = jwt.sign({ email: user.email, userId: user._id.toString(), aud: 'Watchlist' }, this.jwtSecret, { expiresIn: '1h' });
+      return { success: true, token: userToken };
+
+    } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      } else {
+        throw new RpcException({ code: status.INTERNAL, message: 'Internal server error' });
+      }
     }
-
-    if (!user) {
-      throw new RpcException({ code: status.NOT_FOUND, message: 'User not found' });
-    }
-
-    if (user.password !== request.password) {
-      throw new RpcException({ code: status.INVALID_ARGUMENT, message: 'Password does not match' });
-    }
-
-    const userToken = jwt.sign({ email: user.email, userId: user._id.toString(), aud: 'Watchlist' }, this.jwtSecret, { expiresIn: '1h' });
-    return { success: true, token: userToken };
   }
+
 
   validate(request: ValidateRequest): ValidateResponse {
     if (!request.token) {
@@ -69,7 +76,7 @@ export class AppService {
       jwt.verify(request.token, this.jwtSecret);
       return { valid: true };
     } catch (error) {
-      throw new RpcException({ code: status.UNAUTHENTICATED, message: 'Error during token validation: ' + error.message });
+      throw new RpcException({ code: status.UNAUTHENTICATED, message: error });
     }
   }
 
