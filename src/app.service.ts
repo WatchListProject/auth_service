@@ -6,14 +6,19 @@ import * as jwt from 'jsonwebtoken';
 import { User, UserDocument } from './mongoose/user.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AppService {
-  private readonly jwtSecret = process.env.JWT_SECRET_KEY;
+  private readonly jwtSecretv: string;
+
 
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
-  ) { }
+    private readonly configService: ConfigService, // Inyecta ConfigService
+  ) { 
+    this.jwtSecretv = this.configService.get<string>('JWT_SECRET_KEY'); // Accede a la variable de entorno
+  }
 
   private validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -54,7 +59,7 @@ export class AppService {
         throw new RpcException({ code: status.UNAUTHENTICATED, message: 'Password does not match' });
       }
 
-      const userToken = jwt.sign({ email: user.email, userId: user._id.toString(), aud: 'Watchlist' }, this.jwtSecret, { expiresIn: '1h' });
+      const userToken = jwt.sign({ email: user.email, userId: user._id.toString(), aud: 'Watchlist' }, this.jwtSecretv , { expiresIn: '1h' });
       return { success: true, token: userToken };
 
     } catch (error) {
@@ -73,7 +78,7 @@ export class AppService {
     }
 
     try {
-      jwt.verify(request.token, this.jwtSecret);
+      jwt.verify(request.token, this.jwtSecretv);
       return { valid: true };
     } catch (error) {
       throw new RpcException({ code: status.UNAUTHENTICATED, message: error });
