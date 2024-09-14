@@ -6,18 +6,15 @@ import * as jwt from 'jsonwebtoken';
 import { User, UserDocument } from './mongoose/user.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AppService {
   private readonly jwtSecretv: string;
 
-
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
-    private readonly configService: ConfigService, // Inyecta ConfigService
   ) { 
-    this.jwtSecretv = this.configService.get<string>('JWT_SECRET_KEY'); // Accede a la variable de entorno
+    this.jwtSecretv = process.env.JWT_SECRET_KEY; // Acceso directo a JWT_SECRET_KEY desde .env
   }
 
   private validateEmail(email: string): boolean {

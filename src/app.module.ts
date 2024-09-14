@@ -4,21 +4,13 @@ import { AppService } from './app.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { join } from 'path';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ConfigModule, ConfigService } from '@nestjs/config'; // Importa ConfigModule y ConfigService
 import { User, UserSchema } from './mongoose/user.schema';
+import { config } from 'dotenv';
+config();
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true, // Hace que el ConfigModule esté disponible en toda la aplicación sin necesidad de importarlo en otros módulos.
-    }),
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGODB_URI'), // Accede a la URI de MongoDB usando ConfigService
-      }),
-    }),
+    MongooseModule.forRoot(process.env.MONGODB_URI), 
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     ClientsModule.register([
       {
@@ -34,4 +26,4 @@ import { User, UserSchema } from './mongoose/user.schema';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}
