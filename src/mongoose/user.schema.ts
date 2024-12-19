@@ -3,21 +3,35 @@ import { HydratedDocument } from 'mongoose';
 
 export type UserDocument = HydratedDocument<User>;
 
+export enum AuthProvider {
+  GOOGLE = 'GOOGLE',
+  WATCHLIST = 'WATCHLIST',
+}
+
 @Schema()
 export class User {
   @Prop({
     required: true,
-    unique: true
+    unique: true,
   })
   email: string;
 
-  @Prop({ required: true })
-  password: string;
+  @Prop({ 
+    required: true,
+    enum: AuthProvider,
+  })
+  authProvider: AuthProvider; 
+
+  @Prop({ required: function() { return this.authProvider === AuthProvider.WATCHLIST; } })
+  password: string; 
 
   @Prop({ default: [] })
-  mediaList: [Media];
+  mediaList: Media[];
 
+  @Prop({ required: false })
+  uid: string; 
 }
+
 
 export class Media {
   @Prop({ required: true })
