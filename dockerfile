@@ -16,7 +16,7 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY package*.json ./
 
-COPY firebase_auth_credentials.json ./firebase_auth_credentials.json
+### COPY firebase_auth_credentials.json ./firebase_auth_credentials.json  
 
 RUN npm install --only=production
 
